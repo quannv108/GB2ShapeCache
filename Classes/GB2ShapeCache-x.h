@@ -52,7 +52,7 @@ public:
 public:
     bool init();
     void addShapesWithFile(const std::string &plist);
-    void addFixturesToBody(b2Body *body, const std::string &shape);
+    void addFixturesToBody(b2Body *body, const std::string &shape, float scale =1.0f);
     cocos2d::Point anchorPointForShape(const std::string &shape);
     void reset();
     float getPtmRatio() { return ptmRatio; }

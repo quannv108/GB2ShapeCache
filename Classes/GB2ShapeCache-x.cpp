@@ -98,7 +98,7 @@ void GB2ShapeCache::reset()
 	shapeObjects.clear();
 }
 
-void GB2ShapeCache::addFixturesToBody(b2Body *body, const std::string &shape)
+void GB2ShapeCache::addFixturesToBody(b2Body *body, const std::string &shape, float scale)
 {
 	std::map<std::string, BodyDef *>::iterator pos = shapeObjects.find(shape);
 	assert(pos != shapeObjects.end());
@@ -106,9 +106,48 @@ void GB2ShapeCache::addFixturesToBody(b2Body *body, const std::string &shape)
 	BodyDef *so = (*pos).second;
 
 	FixtureDef *fix = so->fixtures;
-    while (fix) {
-        body->CreateFixture(&fix->fixture);
-        fix = fix->next;
+    if(scale == 1.0f){
+        while (fix) {
+            body->CreateFixture(&fix->fixture);
+            fix = fix->next;
+        }
+    }else{
+        b2Vec2 vertices[b2_maxPolygonVertices];
+        while(fix) {
+            // make local copy of the fixture def
+            b2FixtureDef fix2 = fix->fixture;
+            
+            // get the shape
+            const b2Shape *s = fix2.shape;
+            
+            // clone & scale polygon
+            const b2PolygonShape *p = dynamic_cast<const b2PolygonShape*>(s);
+            if(p)
+            {
+                b2PolygonShape p2;
+                for(int i=0; i<p->m_count; i++)
+                {
+                    vertices[i].x = p->m_vertices[i].x * scale;
+                    vertices[i].y = p->m_vertices[i].y * scale;
+                }
+                p2.Set(vertices, p->m_count);
+                fix2.shape = &p2;
+            }
+            
+            // clone & scale circle
+            const b2CircleShape *c = dynamic_cast<const b2CircleShape *>(s);
+            if(c) {
+                b2CircleShape c2;
+                c2.m_radius = c->m_radius * scale;
+                c2.m_p.x = c->m_p.x * scale;
+                c2.m_p.y = c->m_p.y * scale;
+                fix2.shape = &c2;
+            }
+            
+            // add to body
+            body->CreateFixture(&fix2);
+            fix = fix->next;
+        }
     }
 }
 
@@ -218,7 +257,7 @@ void GB2ShapeCache::addShapesWithFile(const std::string &plist)
 
                 b2CircleShape *circleShape = new b2CircleShape();
 				
-                circleShape->m_radius = circleData.at("radius").asFloat()/ ptmRatio;
+                circleShape->m_radius = (circleData.at("radius").asFloat()/ ptmRatio)/contentScaleFactor;
 				Point p = PointFromString(circleData.at("position").asString());
                 circleShape->m_p = b2Vec2((p.x / ptmRatio)/contentScaleFactor,
                                           (p.y / ptmRatio)/contentScaleFactor);
